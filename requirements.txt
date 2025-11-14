@@ -1,16 +1,32 @@
+# Core dependencies
 click>=8.1.7
 pytest>=7.4.3
 requests>=2.31.0
 python-dotenv==1.0.1
 pyyaml==6.0.2
+
+# AI Models
 openai>=1.53.0
-anthropic>=0.5.0
+anthropic>=0.38.0
 aider-chat>=0.61.0
+
+# Security
 defusedxml>=0.7.1
 cryptography>=41.0.0
-anyio==4.6.2.post1
 bcrypt>=4.0.1
+bleach>=6.0.0
+
+# v2.0 New Dependencies
+aiohttp>=3.9.0
+rich>=13.0.0
+asyncio-compat>=0.1.2
+
+# Utilities
 slack-sdk>=3.26.1
 markupsafe>=2.1.1
-bleach>=6.0.0
 typing-extensions>=4.5.0
+anyio==4.6.2.post1
+
+# Optional for development
+streamlit>=1.28.0; extra == "gui"
+redis>=5.0.0; extra == "cache"

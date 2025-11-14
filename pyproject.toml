@@ -1,39 +1,68 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=65.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentic-security"
-version = "1.0.0"
+version = "2.0.0"
 authors = [
-    { name="rUv", email="your.email@example.com" },
+    { name="rUv", email="contact@agentic-security.io" },
 ]
-description = "AI-powered security scanning and fixing pipeline"
+description = "AI-Native Security Intelligence Platform with learning capabilities"
 readme = "README.md"
 requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["security", "ai", "llm", "vulnerability-detection", "prompt-injection", "agentic", "devsecops", "agentdb", "aidefence"]
 classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+    "Environment :: Console",
 ]
 dependencies = [
-    "pytest>=7.4.3",
+    "click>=8.1.7",
     "requests>=2.31.0",
-    "python-dotenv>=1.0.0",
-    "pyyaml>=6.0.1",
+    "python-dotenv>=1.0.1",
+    "pyyaml>=6.0.2",
     "openai>=1.53.0",
     "anthropic>=0.38.0",
-    "click>=8.1.7",
+    "aider-chat>=0.61.0",
+    "defusedxml>=0.7.1",
+    "cryptography>=41.0.0",
+    "bcrypt>=4.0.1",
+    "bleach>=6.0.0",
+    "aiohttp>=3.9.0",
+    "rich>=13.0.0",
+    "slack-sdk>=3.26.1",
+    "markupsafe>=2.1.1",
+    "typing-extensions>=4.5.0",
     "anyio>=4.6.2"
 ]
 
 [project.optional-dependencies]
-slack = [
-    "slack-sdk>=3.26.1"
+gui = ["streamlit>=1.28.0"]
+cache = ["redis>=5.0.0"]
+all = ["streamlit>=1.28.0", "redis>=5.0.0"]
+dev = [
+    "pytest>=7.4.3",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/ruvnet/agentic-security"
+Homepage = "https://github.com/ruvnet/agentic-security"
+Documentation = "https://docs.agentic-security.com"
+Repository = "https://github.com/ruvnet/agentic-security"
 "Bug Tracker" = "https://github.com/ruvnet/agentic-security/issues"
 
 [project.scripts]
@@ -41,3 +70,12 @@ agentic-security = "agentic_security.security_cli:cli"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+asyncio_mode = "auto"
+
+[tool.black]
+line-length = 100
+target-version = ['py310', 'py311', 'py312']
