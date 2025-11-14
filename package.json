@@ -1,0 +1,118 @@
+{
+  "name": "agentic-security",
+  "version": "2.0.0",
+  "description": "AI-Native Security Intelligence Platform - Autonomous security scanning with learning capabilities",
+  "main": "index.js",
+  "scripts": {
+    "aidefence:start": "aidefence server --port 3000 --host 0.0.0.0",
+    "aidefence:detect": "aidefence detect",
+    "aidefence:analyze": "aidefence analyze --deep",
+    "aidefence:version": "aidefence version",
+    "agentdb:init": "agentdb init ./agentdb.db --dimension 1536 --preset medium",
+    "agentdb:stats": "agentdb stats ./agentdb.db",
+    "agentdb:sync:server": "agentdb sync start-server --port 4433",
+    "agentdb:consolidate": "agentdb skill consolidate 3 0.7 7 true",
+    "agentdb:learn": "agentdb learner run 3 0.6 0.7",
+    "agentdb:export": "agentdb export ./agentdb.db ./backups/agentdb-backup.json.gz --compress",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "setup": "npm run agentdb:init && npm run aidefence:version"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ruvnet/agentic-security.git"
+  },
+  "keywords": [
+    "security",
+    "ai",
+    "llm",
+    "vulnerability-detection",
+    "prompt-injection",
+    "agentic",
+    "devsecops",
+    "security-automation",
+    "machine-learning",
+    "agentdb",
+    "aidefence"
+  ],
+  "author": "rUv",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ruvnet/agentic-security/issues"
+  },
+  "homepage": "https://github.com/ruvnet/agentic-security#readme",
+  "dependencies": {
+    "aidefence": "^2.1.0"
+  },
+  "devDependencies": {
+    "agentdb": "^1.6.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "aidefence": {
+    "version": "2.1.0",
+    "capabilities": [
+      "prompt-injection-detection",
+      "behavioral-analysis",
+      "formal-verification",
+      "gateway-server",
+      "threat-monitoring"
+    ],
+    "commands": {
+      "detect": "Detect threats in text input",
+      "analyze": "Analyze text for prompt injection patterns with optional deep analysis",
+      "server": "Start AIMDS Gateway server for centralized protection"
+    },
+    "integration": {
+      "api_endpoint": "http://localhost:3000",
+      "protocols": ["HTTP", "WebSocket"],
+      "authentication": "API Key / Token based"
+    }
+  },
+  "agentdb": {
+    "version": "1.6.1",
+    "capabilities": [
+      "vector-search",
+      "reflexion-episodes",
+      "skill-library",
+      "causal-reasoning",
+      "multi-agent-sync",
+      "pattern-learning",
+      "memory-consolidation"
+    ],
+    "features": {
+      "reflexion": {
+        "store": "Store episodes with self-critique",
+        "retrieve": "Retrieve relevant past episodes",
+        "critique-summary": "Get aggregated critique lessons"
+      },
+      "skills": {
+        "create": "Create reusable skills",
+        "search": "Find applicable skills by similarity",
+        "consolidate": "Auto-create skills from successful episodes"
+      },
+      "causal": {
+        "add-edge": "Add causal relationship",
+        "query": "Query causal edges",
+        "experiment": "Run A/B experiments"
+      },
+      "learner": {
+        "run": "Discover causal edges from patterns",
+        "prune": "Remove low-quality edges"
+      },
+      "sync": {
+        "start-server": "Start QUIC sync server",
+        "connect": "Connect to remote server",
+        "push": "Push local changes",
+        "pull": "Pull remote changes"
+      }
+    },
+    "database": {
+      "type": "SQLite",
+      "default_path": "./agentdb.db",
+      "dimension": 1536,
+      "preset": "medium"
+    }
+  }
+}
