@@ -7,7 +7,6 @@ import traceback
 import shutil
 import time
 import json
-import json
 import os
 import random
 from dotenv import load_dotenv
@@ -518,221 +517,10 @@ tree = parse(xml_file, forbid_dtd=True, forbid_entities=True)
         print(f"\n\033[1;36m=== Fix Implementation {'Succeeded' if success else 'Failed'} ===\033[0m")
         return success
 
-        # Create and switch to fix branch if not already on it
-        if not self.branch_name.startswith('security-fixes-'):
-            self.branch_name = f"security-fixes-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-            try:
-                subprocess.run(['git', 'checkout', '-b', self.branch_name], check=True)
-                print(f"Created fix branch: {self.branch_name}")
-            except subprocess.CalledProcessError as e:
-                print(f"\033[31m[!] Failed to create fix branch: {e}\033[0m")
-                return False
-
-        total_fixes = len(suggestions)
-        fixes_applied = []
-        success = True
-        
-        if self.verbose:
-            print(f"\n\033[1;36m[>] Starting fix implementation for {total_fixes} issues\033[0m")
-            print("\033[36m[>] Using model:", VALID_MODELS[self.analysis_model]['name'], "\033[0m")
-        else:
-            print(f"\033[36m[>] Implementing {total_fixes} fixes...\033[0m")
-        
-        for idx, suggestion in enumerate(suggestions, 1):
-            if self.verbose:
-                print(f"\n\033[1;36m[>] Processing fix {idx}/{total_fixes}\033[0m")
-            
-            try:
-                if not isinstance(suggestion, dict):
-                    print(f"\033[33m[!] Invalid suggestion format: {suggestion}\033[0m")
-                    continue
-                    
-                file_path = suggestion.get('file')
-                vuln_type = suggestion.get('type')
-                if not file_path or not vuln_type:
-                    print("\033[33m[!] Missing required fields in suggestion\033[0m")
-                    if self.verbose:
-                        print("\033[33m    Required: 'file' and 'type'\033[0m")
-                        print("\033[33m    Received:", suggestion, "\033[0m")
-                    continue
-
-                if not os.path.exists(file_path):
-                    print(f"\033[33m[!] File not found: {file_path}\033[0m")
-                    continue
-
-                # Generate fix prompt
-                try:
-                    if self.verbose:
-                        print("\033[36m[>] Generating fix prompt...\033[0m")
-                    fix_prompt = self.prompt_manager.get_prompt('fix_generation', 
-                        vulnerability_type=vuln_type,
-                        file_path=file_path)
-                    if self.verbose:
-                        print("\033[36m[>] Prompt:", fix_prompt, "\033[0m")
-                except ValueError as e:
-                    print(f"\033[31m[!] Error generating fix prompt: {str(e)}\033[0m")
-                    if self.verbose:
-                        print("\033[31m[!] Full error:", traceback.format_exc(), "\033[0m")
-                    success = False
-                    continue
-
-                # Backup file
-                backup_path = f"{file_path}.bak"
-                try:
-                    if self.verbose:
-                        print(f"\033[36m[>] Creating backup: {backup_path}\033[0m")
-                    shutil.copy2(file_path, backup_path)
-                except Exception as e:
-                    print(f"\033[31m[!] Failed to create backup: {str(e)}\033[0m")
-                    if self.verbose:
-                        print("\033[31m[!] Full error:", traceback.format_exc(), "\033[0m")
-                    success = False
-                    continue
-
-                try:
-                    # Run aider with improved error handling
-                    if self.verbose:
-                        print("\033[36m[>] Running aider...\033[0m")
-                    
-                    try:
-                        result = subprocess.run([
-                            "aider",
-                            "--model", self.analysis_model,
-                            "--edit-format", "diff",
-                            "--yes",  # Auto-approve changes
-                            "--no-auto-commits",  # Don't auto-commit changes
-                            file_path,
-                            fix_prompt
-                        ], capture_output=True, text=True, timeout=timeout)
-                    except FileNotFoundError:
-                        print("\033[33m[!] Aider not found. Please install it with: pip install aider-chat\033[0m")
-                        continue
-                    except subprocess.TimeoutExpired:
-                        print(f"\033[33m[!] Aider timed out after {timeout}s - skipping this fix\033[0m")
-                        continue
-
-                    # Handle non-zero return codes
-                    if result.returncode != 0:
-                        print(f"\033[31m[!] Aider failed with return code {result.returncode}\033[0m")
-                        if result.stderr and "git" not in result.stderr.lower():
-                            print(f"\033[31m[!] Error: {result.stderr}\033[0m")
-                        if self.verbose:
-                            print("\033[31m[!] Full output:", result.stdout, "\033[0m")
-                            print(f"\033[36m[>] Restoring from backup: {backup_path}\033[0m")
-                        shutil.move(backup_path, file_path)
-                        continue
-
-                    # Stage changes if successful and git is available
-                    if result.returncode == 0 and "No changes made" not in result.stdout:
-                        try:
-                            subprocess.run(['git', 'add', file_path], check=True)
-                            subprocess.run(['git', 'commit', '-m', f'Fix {vuln_type} in {file_path}'], check=True)
-                        except subprocess.CalledProcessError as e:
-                            print(f"\033[33m[!] Git operations failed - continuing without version control: {e}\033[0m")
-                        except FileNotFoundError:
-                            print("\033[33m[!] Git not found - continuing without version control\033[0m")
-                    
-                    if "No changes made" in result.stdout:
-                        print(f"\033[33m[!] No changes made for {vuln_type} in {file_path}\033[0m")
-                        success = False
-                        if self.verbose:
-                            print(f"\033[36m[>] Restoring from backup: {backup_path}\033[0m")
-                        shutil.move(backup_path, file_path)
-                    else:
-                        if self.verbose:
-                            print("\033[32m[✓] Changes made:\033[0m")
-                            # Extract and display diff
-                            import re
-                            diff_pattern = r'(?s)<<<<<<< SEARCH.*>>>>>>> REPLACE'
-                            diffs = re.findall(diff_pattern, result.stdout)
-                            for diff in diffs:
-                                print("\033[36m" + diff + "\033[0m")
-                        
-                        print(f"\033[32m[✓] Applied fix for {vuln_type} in {file_path}\033[0m")
-                        fixes_applied.append({
-                            'file': file_path,
-                            'type': vuln_type,
-                            'backup': backup_path,
-                            'diff': result.stdout if self.verbose else None
-                        })
-                        
-                except subprocess.TimeoutExpired:
-                    print(f"\033[31m[!] Fix attempt timed out after {timeout} seconds\033[0m")
-                    success = False
-                    if self.verbose:
-                        print(f"\033[36m[>] Restoring from backup: {backup_path}\033[0m")
-                    shutil.move(backup_path, file_path)
-                except subprocess.CalledProcessError as e:
-                    print(f"\033[31m[!] Error implementing fix: {e}\033[0m")
-                    if hasattr(e, 'output') and e.output:
-                        print(f"\033[31m[!] Output: {e.output}\033[0m")
-                    if self.verbose:
-                        print("\033[31m[!] Full error:", traceback.format_exc(), "\033[0m")
-                    success = False
-                    if self.verbose:
-                        print(f"\033[36m[>] Restoring from backup: {backup_path}\033[0m")
-                    shutil.move(backup_path, file_path)
-                    
-            except Exception as e:
-                print(f"\033[31m[!] Unexpected error: {str(e)}\033[0m")
-                if self.verbose:
-                    print("\033[31m[!] Full error:", traceback.format_exc(), "\033[0m")
-                success = False
-                # Restore backup if exists
-                if 'backup_path' in locals() and os.path.exists(backup_path):
-                    try:
-                        if self.verbose:
-                            print(f"\033[36m[>] Restoring from backup: {backup_path}\033[0m")
-                        shutil.move(backup_path, file_path)
-                    except Exception as restore_err:
-                        print(f"\033[31m[!] Failed to restore backup: {str(restore_err)}\033[0m")
-                        if self.verbose:
-                            print("\033[31m[!] Full error:", traceback.format_exc(), "\033[0m")
-
-        # Final report
-        if fixes_applied:
-            print("\n\033[32m[✓] Successfully applied fixes:\033[0m")
-            for fix in fixes_applied:
-                print(f"  - {fix['type']} in {fix['file']}")
-                if self.verbose and fix.get('diff'):
-                    print("\033[36mDiff:\033[0m")
-                    print(fix['diff'])
-                # Clean up backup
-                if os.path.exists(fix['backup']):
-                    if self.verbose:
-                        print(f"\033[36m[>] Removing backup: {fix['backup']}\033[0m")
-                    os.remove(fix['backup'])
-        else:
-            print("\n\033[33m[!] No fixes were successfully applied\033[0m")
-            
-        # Generate report
-        report_file = f"security_fixes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        try:
-            report_data = {
-                'timestamp': datetime.now().isoformat(),
-                'total_suggestions': total_fixes,
-                'fixes_applied': fixes_applied,
-                'success': success
-            }
-            if not self.verbose:
-                # Remove diff data in non-verbose mode
-                for fix in report_data['fixes_applied']:
-                    fix.pop('diff', None)
-                    
-            with open(report_file, 'w') as f:
-                json.dump(report_data, f, indent=2)
-            print(f"\033[36m[>] Fix report saved to: {report_file}\033[0m")
-        except Exception as e:
-            print(f"\033[31m[!] Failed to save fix report: {e}\033[0m")
-            if self.verbose:
-                print("\033[31m[!] Full error:", traceback.format_exc(), "\033[0m")
-                    
-        return success
-
     def run_security_checks(self) -> Dict:
         """Run comprehensive security scans"""
         results = {"web": [], "code": []}
-        
+
         for target in self.config['security']['scan_targets']:
             if target['type'] == 'web':
                 results['web'].append(self._run_web_security_checks(target['url']))
@@ -774,8 +562,6 @@ tree = parse(xml_file, forbid_dtd=True, forbid_entities=True)
             results['nuclei'] = {"error": str(e)}
 
         return results
-
-    import time  # Add this import at the top if not already present
 
     def _run_code_security_checks(self, path: str, exclude_dirs: set = None) -> Dict:
         """Run focused code security checks"""
@@ -1275,38 +1061,6 @@ tree = parse(xml_file, forbid_dtd=True, forbid_entities=True)
             self.progress.finish("No critical vulnerabilities found")
             return {'status': True}
             
-            # Send notification if Slack webhook is configured
-            webhook_url = os.environ.get('SLACK_WEBHOOK')
-            if webhook_url:
-                try:
-                    findings_count = len(results.get("reviews", []))
-                    response = requests.post(
-                        webhook_url,
-                        json={
-                            'text': f'Security scan complete\nFindings: {findings_count} issues found'
-                        },
-                        timeout=10
-                    )
-                    response.raise_for_status()
-                except Exception as e:
-                    print(f"Warning: Failed to send Slack notification: {str(e)}")
-                    # Don't raise error since Slack is optional
-            
-            # Apply security fixes if needed
-            if security_results:
-                fix_results = self._apply_security_fixes(security_results)
-                results['fixes'] = fix_results
-
-            # Cache results before returning, but not in CI
-            if not os.environ.get('CI', '').lower() == 'true' and not os.environ.get('SKIP_CACHE', '').lower() == 'true':
-                self.cache.save_scan_results("latest_scan", {'results': results})
-            
-            # In CI mode, ensure we return a successful result for testing
-            if os.environ.get('CI', '').lower() == 'true':
-                return {'status': True, 'results': results}
-            
-            return results
-            
         except Exception as e:
             print(f"Pipeline failed: {str(e)}")
             # Return error dict instead of False
@@ -1745,6 +1499,14 @@ tree = parse(xml_file, forbid_dtd=True, forbid_entities=True)
             return True
         except Exception:
             return False
+    def _sanitize_input(self, text: str) -> str:
+        """Sanitize a string for safe inclusion in reports.
+
+        Delegates to PromptManager.sanitize_input so that all sanitisation
+        logic is in one place.
+        """
+        return self.prompt_manager.sanitize_input(text)
+
     def _show_progress(self, message: str):
         """Show simple progress indicator"""
         print(f"\r\033[36m[>] {message}...\033[0m", end='', flush=True)
