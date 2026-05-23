@@ -328,5 +328,33 @@ def fix_from_report(report_path, min_severity, max_attempts):
         print_cyber_status(f"Error processing security report: {str(e)}", "error")
         sys.exit(1)
 
+@cli.command()
+@click.option('--path', '-p', multiple=True, required=True, help='Paths to review')
+@click.option('--config', '-c', default='config.yml', help='Path to configuration file')
+@click.option('--output', '-o', default=None, help='Output markdown report path')
+@click.option('--verbose/--no-verbose', '-v/', default=False, help='Verbose output')
+def review(path: tuple, config: str, output: Optional[str], verbose: bool):
+    """Review paths for security issues and generate a report"""
+    try:
+        print(CYBER_BANNER)
+        print_cyber_status("Initializing security review...", "info")
+        pipeline = SecurityPipeline(config)
+
+        results = pipeline.review_paths(list(path), verbose=verbose)
+
+        if output:
+            pipeline.generate_review_report(results, output)
+            print_cyber_status(f"Security review report generated: {output}", "success")
+        else:
+            print_cyber_status("Security Review", "info")
+            pipeline.print_review_results(results, verbose=verbose)
+
+        sys.exit(0)
+
+    except Exception as e:
+        print_cyber_status(f"Error during review: {str(e)}", "error")
+        sys.exit(1)
+
+
 if __name__ == '__main__':
     cli()
